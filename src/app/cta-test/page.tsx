@@ -1,4 +1,4 @@
-import { CTASection } from "@/components/ui/cta-with-rectangle"
+import { CTASection } from "../../../landing/cta-with-rectangle"
 
 export default function CTATestPage() {
   return (

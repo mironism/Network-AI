@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import LandingPage from '@/components/LandingPage'
+import LandingPage from '../../landing/LandingPage'
 import CRMDashboard from '@/components/dashboard/CRMDashboard'
 
 export default async function HomePage() {
