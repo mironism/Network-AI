@@ -26,8 +26,10 @@ interface EnrichmentData {
   enriched_at?: string
   confidence_score?: {
     confidence_level?: 'low' | 'medium' | 'high' | string
-    overall_confidence?: number | string
+    overall_confidence?: number
     matching_factors?: string[]
+    disambiguation_notes?: string
+    verification_suggestions?: string
   }
 }
 
