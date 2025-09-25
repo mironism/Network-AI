@@ -24,7 +24,7 @@ export default function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${location.origin}/auth/callback`,
+            emailRedirectTo: (process.env.NEXT_PUBLIC_EMAIL_REDIRECT_TO as string) || `${location.origin}/auth/callback`,
           },
         })
         if (error) throw error
