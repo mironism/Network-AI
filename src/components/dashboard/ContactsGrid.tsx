@@ -24,6 +24,11 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 
 interface EnrichmentData {
   enriched_at?: string
+  confidence_score?: {
+    confidence_level?: 'low' | 'medium' | 'high' | string
+    overall_confidence?: number | string
+    matching_factors?: string[]
+  }
 }
 
 interface Contact {
