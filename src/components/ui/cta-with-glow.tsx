@@ -9,7 +9,7 @@ interface CTAProps {
   action: {
     text: string
     href: string
-    variant?: "default" | "glow"
+    variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "link"
   }
   className?: string
 }
