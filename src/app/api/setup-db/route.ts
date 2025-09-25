@@ -13,6 +13,22 @@ export async function POST() {
 
     // Create the contacts table and related objects
     const schema = `
+      -- Backfill-safe schema alignment
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'contacts' AND column_name = 'location'
+        ) THEN
+          ALTER TABLE contacts ADD COLUMN location TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'contacts' AND column_name = 'company'
+        ) THEN
+          ALTER TABLE contacts ADD COLUMN company TEXT;
+        END IF;
+      END $$;
+
       -- Enable the pgvector extension for vector search
       CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -22,6 +38,8 @@ export async function POST() {
         user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
+        location TEXT,
+        company TEXT,
         linkedin_url TEXT,
         other_links TEXT,
         enrichment_data JSONB,

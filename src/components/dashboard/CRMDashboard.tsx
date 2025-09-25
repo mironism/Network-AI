@@ -8,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Search, Plus, Users, Activity, Settings, LogOut, Filter } from 'lucide-react'
+import { Search, Plus, Users, Activity, Settings, LogOut, Filter, MessageSquare } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContactsGrid from './ContactsGrid'
 import ContactForm from './ContactForm'
 import ContactStats from './ContactStats'
 import SearchBar from './SearchBar'
+import NetworkChat from './NetworkChat'
 
 interface User {
   id: string
@@ -28,6 +29,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
   const [activeTab, setActiveTab] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAddContact, setShowAddContact] = useState(false)
+  const [showChat, setShowChat] = useState(false)
   const supabase = createClient()
 
   const handleSignOut = async () => {
@@ -42,7 +44,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">NetworkAI</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Agary</h1>
               <Badge variant="secondary" className="text-xs">
                 Beta
               </Badge>
@@ -53,6 +55,16 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
                 <span>Welcome,</span>
                 <span className="font-medium">{user.email}</span>
               </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowChat(true)}
+                className="flex items-center space-x-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Ask Network</span>
+              </Button>
 
               <Button
                 variant="outline"
@@ -99,7 +111,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
                 </Button>
               </SheetTrigger>
               <SheetContent className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto">
-                <div className="h-full py-4">
+                <div className="h-full py-4 px-4 sm:px-6">
                   <ContactForm
                     onSuccess={() => setShowAddContact(false)}
                     onCancel={() => setShowAddContact(false)}
@@ -141,6 +153,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
           </TabsContent>
         </Tabs>
       </main>
+      <NetworkChat open={showChat} onOpenChange={setShowChat} />
     </div>
   )
 }

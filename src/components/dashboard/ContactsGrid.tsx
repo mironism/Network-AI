@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   MoreVertical,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContactDetailsModal from './ContactDetailsModal'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface EnrichmentData {
   enriched_at?: string
@@ -30,6 +30,8 @@ interface Contact {
   id: string
   first_name: string
   last_name: string
+  location?: string
+  company?: string
   linkedin_url?: string
   other_links?: string
   enrichment_data?: EnrichmentData
@@ -173,9 +175,7 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
     }
   }
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-  }
+  // No avatars: initials not used anymore
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -261,89 +261,25 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {contacts.map((contact) => {
-          const badges = getContactBadges(contact)
-
-          return (
-            <Card
-              key={contact.id}
-              className="hover:shadow-lg transition-all duration-200 cursor-pointer border-0 shadow-sm hover:shadow-md"
-              onClick={() => setSelectedContact(contact)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src="" />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                        {getInitials(contact.first_name, contact.last_name)}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-lg">
-                        {contact.first_name} {contact.last_name}
-                      </h3>
-                      <div className="flex items-center space-x-1 text-sm text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        <span>Added {formatDate(contact.created_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedContact(contact)
-                      }}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      {contact.linkedin_url && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          window.open(contact.linkedin_url, '_blank')
-                        }}>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open LinkedIn
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          enrichContact(contact.id)
-                        }}
-                        disabled={enrichingContacts.has(contact.id)}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {enrichingContacts.has(contact.id) ? 'Enriching...' :
-                         contact.enrichment_data ? 'Refresh Data' : 'Enrich Contact'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteContact(contact.id)
-                        }}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-
-              <CardContent className="pt-0 space-y-3">
-                {/* Badges */}
-                {badges.length > 0 && (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Badges</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contacts.map((contact) => {
+            const badges = getContactBadges(contact)
+            return (
+              <TableRow key={contact.id} className="cursor-pointer" onClick={() => setSelectedContact(contact)}>
+                <TableCell className="font-medium">{contact.first_name} {contact.last_name}</TableCell>
+                <TableCell className="text-muted-foreground">{contact.company || '—'}</TableCell>
+                <TableCell className="text-muted-foreground">{contact.location || '—'}</TableCell>
+                <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {badges.map((badge, index) => (
                       <Badge key={index} variant={badge.variant} className="text-xs">
@@ -351,63 +287,42 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
                       </Badge>
                     ))}
                   </div>
-                )}
-
-                {/* Notes Preview */}
-                {contact.notes && (
-                  <div className="bg-gray-50 rounded-md p-2">
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {contact.notes}
-                    </p>
-                  </div>
-                )}
-
-                {/* Enrichment Data Preview */}
-                {contact.enrichment_data && (
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-1 text-xs text-gray-500">
-                      <Briefcase className="h-3 w-3" />
-                      <span>AI Enhanced Profile</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex justify-between items-center pt-2">
-                  <div className="flex space-x-1">
-                    {contact.linkedin_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          window.open(contact.linkedin_url, '_blank')
-                        }}
-                        className="h-7 px-2 text-xs"
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        LinkedIn
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedContact(contact)
-                    }}
-                    className="h-7 px-2 text-xs"
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedContact(contact) }}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      {contact.linkedin_url && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(contact.linkedin_url, '_blank') }}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open LinkedIn
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); enrichContact(contact.id) }} disabled={enrichingContacts.has(contact.id)}>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {enrichingContacts.has(contact.id) ? 'Enriching...' : contact.enrichment_data ? 'Refresh Data' : 'Enrich Contact'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteContact(contact.id) }} className="text-red-600">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+        {/* Removed footer count per request */}
+      </Table>
 
       {/* Contact Details Modal */}
       {selectedContact && (

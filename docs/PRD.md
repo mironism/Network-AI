@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 
 ## 1. Overview
-- **Product**: NetworkAI - Smart Networking CRM
+- **Product**: Agary - Smart Networking CRM
 - **Owner**:
 - **Date**: 2025-09-25
 - **Status**: Draft

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -92,6 +92,8 @@ interface Contact {
   id: string
   first_name: string
   last_name: string
+  location?: string
+  company?: string
   linkedin_url?: string
   other_links?: string
   enrichment_data?: EnrichmentData
@@ -110,8 +112,11 @@ interface ContactDetailsModalProps {
 export default function ContactDetailsModal({ contact, onClose, onUpdate }: ContactDetailsModalProps) {
   const [currentContact, setCurrentContact] = useState(contact)
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'enrichment' | 'activity'>('overview')
   const [firstName, setFirstName] = useState(contact.first_name)
   const [lastName, setLastName] = useState(contact.last_name)
+  const [location, setLocation] = useState(contact.location || '')
+  const [company, setCompany] = useState(contact.company || '')
   const [linkedinUrl, setLinkedinUrl] = useState(contact.linkedin_url || '')
   const [otherLinks, setOtherLinks] = useState(contact.other_links || '')
   const [notes, setNotes] = useState(contact.notes || '')
@@ -146,6 +151,8 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
         .update({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
+          location: location.trim() || null,
+          company: company.trim() || null,
           linkedin_url: linkedinUrl.trim() || null,
           other_links: otherLinks.trim() || null,
           notes: notes.trim() || null,
@@ -211,21 +218,23 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
     return links.split(',').map(link => link.trim()).filter(link => link)
   }
 
+  // Reset scroll position of the current tab content to top on tab change
+  useEffect(() => {
+    const container = document.getElementById(`tab-${activeTab}`)
+    if (container) {
+      container.scrollTop = 0
+    }
+  }, [activeTab])
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-none w-[90vw] sm:max-w-[90vw] md:max-w-[1000px] lg:max-w-[1100px] h-[85vh] overflow-hidden p-0 rounded-xl">
         {/* Header Section */}
-        <div className="sticky top-0 bg-white border-b p-8 z-10">
+        <div className="sticky top-0 bg-white border-b p-6 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="w-16 h-16">
-                <AvatarImage src="" />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-xl">
-                  {getInitials(currentContact.first_name, currentContact.last_name)}
-                </AvatarFallback>
-              </Avatar>
               <div>
-                <DialogTitle className="text-3xl font-bold text-gray-900 mb-1">
+                <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
                   {currentContact.first_name} {currentContact.last_name}
                 </DialogTitle>
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
@@ -253,6 +262,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                 variant={isEditing ? "default" : "outline"}
                 onClick={() => isEditing ? handleSave() : setIsEditing(true)}
                 disabled={loading}
+                size="sm"
                 className="flex items-center space-x-2"
               >
                 {isEditing ? (
@@ -276,43 +286,45 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
 
         {/* Content Section */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 mx-8 mt-2 mb-4 h-12">
-              <TabsTrigger value="overview" className="flex items-center space-x-2 text-sm">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 min-h-0 flex flex-col">
+            <div className="px-6 pt-4 pb-2">
+              <TabsList className="w-full h-10 whitespace-nowrap">
+                <TabsTrigger value="overview" className="flex-1 flex items-center justify-center space-x-2 text-sm">
                 <User className="h-4 w-4" />
                 <span>Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="flex items-center space-x-2 text-sm">
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="flex-1 flex items-center justify-center space-x-2 text-sm">
                 <FileText className="h-4 w-4" />
                 <span>Notes</span>
-              </TabsTrigger>
-              <TabsTrigger value="enrichment" className="flex items-center space-x-2 text-sm">
+                </TabsTrigger>
+                <TabsTrigger value="enrichment" className="flex-1 flex items-center justify-center space-x-2 text-sm">
                 <Sparkles className="h-4 w-4" />
                 <span>AI Data</span>
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="flex items-center space-x-2 text-sm">
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex-1 flex items-center justify-center space-x-2 text-sm">
                 <Clock className="h-4 w-4" />
                 <span>Activity</span>
-              </TabsTrigger>
-            </TabsList>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full min-h-[60vh] px-8 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
+              <div id="tab-overview" className="h-full min-h-[60vh] px-6 pb-6 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
                 <div className="space-y-6 pb-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* Basic Information */}
                 <Card className="h-fit">
-                  <CardHeader>
+                  <CardHeader className="pb-4">
                     <CardTitle className="flex items-center space-x-2">
                       <User className="h-5 w-5 text-blue-600" />
                       <span>Basic Information</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
                     {isEditing ? (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="edit-firstName">First Name</Label>
                             <Input
@@ -327,6 +339,24 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                               id="edit-lastName"
                               value={lastName}
                               onChange={(e) => setLastName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-company">Company</Label>
+                            <Input
+                              id="edit-company"
+                              value={company}
+                              onChange={(e) => setCompany(e.target.value)}
+                              placeholder="ExampleTech AG"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-location">Location</Label>
+                            <Input
+                              id="edit-location"
+                              value={location}
+                              onChange={(e) => setLocation(e.target.value)}
+                              placeholder="City, Country"
                             />
                           </div>
                         </div>
@@ -350,46 +380,68 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                         </div>
                       </>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-gray-600" />
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <User className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Full Name</p>
+                              <p className="text-gray-700">{currentContact.first_name} {currentContact.last_name}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Full Name</p>
-                            <p className="text-gray-600">{contact.first_name} {contact.last_name}</p>
+                          <div className="flex items-start space-x-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <Building className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Company</p>
+                              <p className="text-gray-700">{currentContact.company || '—'}</p>
+                            </div>
                           </div>
-                        </div>
-
-                        {contact.linkedin_url && (
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <MapPin className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Location</p>
+                              <p className="text-gray-700">{currentContact.location || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                               <ExternalLink className="h-5 w-5 text-blue-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="font-medium text-gray-900">LinkedIn Profile</p>
-                              <a
-                                href={contact.linkedin_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                              >
-                                View LinkedIn Profile →
-                              </a>
+                              {currentContact.linkedin_url ? (
+                                <a
+                                  href={currentContact.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm break-all inline-flex items-center"
+                                >
+                                  View LinkedIn Profile
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                              ) : (
+                                <p className="text-gray-700">—</p>
+                              )}
                             </div>
                           </div>
-                        )}
+                        </div>
 
-                        {contact.other_links && parseOtherLinks(contact.other_links).length > 0 && (
+                        {currentContact.other_links && parseOtherLinks(currentContact.other_links).length > 0 && (
                           <div className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                               <LinkIcon className="h-5 w-5 text-green-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="font-medium text-gray-900 mb-2">Other Links</p>
                               <div className="flex flex-wrap gap-2">
-                                {parseOtherLinks(contact.other_links).map((link, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
+                                {parseOtherLinks(currentContact.other_links).map((link, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs max-w-[280px] truncate" title={link}>
                                     {link}
                                   </Badge>
                                 ))}
@@ -402,47 +454,6 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                   </CardContent>
                 </Card>
 
-                {/* Quick Stats */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                      <span>Quick Stats</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-gray-600">Contact Added</span>
-                      <span className="font-medium">{new Date(contact.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-gray-600">Last Updated</span>
-                      <span className="font-medium">{new Date(contact.updated_at).toLocaleDateString()}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-gray-600">Has Notes</span>
-                      <Badge variant={contact.notes ? "default" : "secondary"}>
-                        {contact.notes ? 'Yes' : 'No'}
-                      </Badge>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-gray-600">Voice Notes</span>
-                      <Badge variant="outline">
-                        {contact.voice_notes?.length || 0}
-                      </Badge>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-gray-600">AI Enhanced</span>
-                      <Badge variant={currentContact.enrichment_data ? "default" : "secondary"}>
-                        {currentContact.enrichment_data ? 'Yes' : 'No'}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
                 </div>
               </div>
@@ -450,7 +461,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
 
             {/* Notes Tab */}
             <TabsContent value="notes" className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full min-h-[60vh] px-8 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
+              <div id="tab-notes" className="h-full min-h-[60vh] px-6 pb-6 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
                 <div className="space-y-6 pb-6">
               <Card>
                 <CardHeader>
@@ -484,6 +495,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                       <p className="text-gray-500 mb-4">No notes yet</p>
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => setIsEditing(true)}
                         className="flex items-center space-x-2"
                       >
@@ -525,7 +537,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
 
             {/* AI Enrichment Tab */}
             <TabsContent value="enrichment" className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full min-h-[60vh] px-8 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
+              <div id="tab-enrichment" className="h-full min-h-[60vh] px-6 pb-6 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
                 <div className="space-y-6 pb-6">
               {currentContact.enrichment_data ? (
                 <Card>
@@ -537,6 +549,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                       </CardTitle>
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={handleEnrichContact}
                         disabled={enriching}
                         className="flex items-center space-x-2"
@@ -571,13 +584,13 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                           </div>
                           {(currentContact.enrichment_data.confidence_score.confidence_level === 'low' ||
                             currentContact.enrichment_data.confidence_score.confidence_level === 'medium') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleEnrichContact}
-                              disabled={enriching}
-                              className="text-orange-600 hover:text-orange-800"
-                            >
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleEnrichContact}
+                                disabled={enriching}
+                                className="text-orange-600 hover:text-orange-800"
+                              >
                               <Sparkles className="h-3 w-3 mr-1" />
                               Re-verify
                             </Button>
@@ -738,16 +751,12 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                             <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center space-x-3">
-                                  {profile.profile_image_url && (
-                                    <img
-                                      src={profile.profile_image_url}
-                                      alt={`${profile.platform} profile`}
-                                      className="w-8 h-8 rounded-full object-cover"
-                                      onError={(e) => {
-                                        e.target.style.display = 'none'
-                                      }}
-                                    />
-                                  )}
+                                  <Avatar className="w-8 h-8">
+                                    {profile.profile_image_url ? (
+                                      <AvatarImage src={profile.profile_image_url} alt={`${profile.platform} profile`} />
+                                    ) : null}
+                                    <AvatarFallback>{(profile.platform || 'P').charAt(0)}</AvatarFallback>
+                                  </Avatar>
                                   <div>
                                     <div className="flex items-center space-x-2">
                                       <span className="font-medium text-blue-900">{profile.platform}</span>
@@ -946,6 +955,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                     <Button
                       onClick={handleEnrichContact}
                       disabled={enriching}
+                      size="sm"
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >
                       <Sparkles className="h-4 w-4 mr-2" />
@@ -960,7 +970,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
 
             {/* Activity Tab */}
             <TabsContent value="activity" className="flex-1 min-h-0 overflow-hidden">
-              <div className="h-full min-h-[60vh] px-8 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
+              <div id="tab-activity" className="h-full min-h-[60vh] px-6 pb-6 overflow-y-scroll" style={{ scrollbarGutter: 'stable' }}>
                 <div className="space-y-6 pb-6">
               <Card>
                 <CardHeader>
@@ -1015,6 +1025,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
             <div className="flex justify-end space-x-3">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   setIsEditing(false)
                   // Reset form
@@ -1027,7 +1038,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
               >
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={loading}>
+              <Button onClick={handleSave} disabled={loading} size="sm">
                 <Save className="h-4 w-4 mr-2" />
                 {loading ? 'Saving...' : 'Save Changes'}
               </Button>

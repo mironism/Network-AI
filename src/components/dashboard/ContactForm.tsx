@@ -30,6 +30,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [location, setLocation] = useState('')
+  const [company, setCompany] = useState('')
   const [otherLinks, setOtherLinks] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
@@ -133,6 +135,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
           {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
+            location: location.trim() || null,
+            company: company.trim() || null,
             linkedin_url: linkedinUrl.trim() || null,
             other_links: otherLinks.trim() || null,
             notes: notes.trim() || null,
@@ -146,6 +150,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
       setFirstName('')
       setLastName('')
       setLinkedinUrl('')
+      setLocation('')
+      setCompany('')
       setOtherLinks('')
       setNotes('')
 
@@ -172,6 +178,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
           {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
+            location: location.trim() || null,
+            company: company.trim() || null,
             linkedin_url: linkedinUrl.trim() || null,
             other_links: otherLinks.trim() || null,
             notes: notes.trim() || null,
@@ -185,6 +193,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
       setFirstName('')
       setLastName('')
       setLinkedinUrl('')
+      setLocation('')
+      setCompany('')
       setOtherLinks('')
       setNotes('')
       setDuplicates([])
@@ -199,8 +209,8 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <SheetHeader>
+    <div className="space-y-6 px-4 sm:px-6 pb-6">
+      <SheetHeader className="px-0 pt-4 pb-2">
         <SheetTitle className="flex items-center space-x-2">
           <Plus className="h-5 w-5" />
           <span>Add New Contact</span>
@@ -211,7 +221,7 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
       </SheetHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="firstName">First Name *</Label>
             <Input
@@ -230,6 +240,27 @@ export default function ContactForm({ onSuccess, onCancel }: ContactFormProps) {
               onChange={(e) => setLastName(e.target.value)}
               required
               placeholder="Doe"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              placeholder="City, Country"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="company">Company</Label>
+            <Input
+              id="company"
+              placeholder="Current company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
             />
           </div>
         </div>

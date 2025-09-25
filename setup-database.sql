@@ -1,4 +1,4 @@
--- NetworkAI Database Setup
+-- Agary Database Setup
 -- Copy and paste this entire script into your Supabase SQL Editor
 
 -- Enable the pgvector extension for vector search
@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS contacts (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
+    location TEXT,
+    company TEXT,
   linkedin_url TEXT,
   other_links TEXT,
   enrichment_data JSONB,
@@ -33,6 +35,45 @@ BEGIN
       RAISE NOTICE 'Vector index creation skipped - pgvector may not be fully configured';
   END;
 END $$;
+
+-- Helper function: semantic match over contacts per user (top-k)
+CREATE OR REPLACE FUNCTION match_contacts(user_uuid uuid, query_embedding vector(1536), match_count int DEFAULT 5)
+RETURNS TABLE (
+  id uuid,
+  user_id uuid,
+  first_name text,
+  last_name text,
+  location text,
+  company text,
+  linkedin_url text,
+  other_links text,
+  enrichment_data jsonb,
+  notes text,
+  voice_notes text[],
+  created_at timestamptz,
+  updated_at timestamptz,
+  similarity float
+) AS $$
+  SELECT c.id,
+         c.user_id,
+         c.first_name,
+         c.last_name,
+         c.location,
+         c.company,
+         c.linkedin_url,
+         c.other_links,
+         c.enrichment_data,
+         c.notes,
+         c.voice_notes,
+         c.created_at,
+         c.updated_at,
+         1 - (c.embedding <=> query_embedding) AS similarity
+  FROM contacts c
+  WHERE c.user_id = user_uuid
+    AND c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> query_embedding
+  LIMIT match_count;
+$$ LANGUAGE SQL STABLE;
 
 -- Enable RLS
 ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
