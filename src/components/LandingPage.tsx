@@ -6,6 +6,8 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { AgaryFeatureSteps } from '@/components/ui/feature-section'
+import { Footer } from '@/components/ui/footer'
+import { Logo } from '@/components/ui/logo'
 import { CTASection } from '@/components/ui/cta-with-glow'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +64,14 @@ export default function LandingPage() {
 
       {/* CTA */}
       <CTASection title="Ready to get started?" action={{ text: 'Get Started', href: '/auth' }} className="mt-24" />
+      <Footer
+        logo={<Logo size="sm" />}
+        brandName="Agary"
+        socialLinks={[]}
+        mainLinks={[{ href: '#features', label: 'Features' }]}
+        legalLinks={[]}
+        copyright={{ text: `© ${new Date().getFullYear()} Agary. All rights reserved.` }}
+      />
     </main>
   )
 }
