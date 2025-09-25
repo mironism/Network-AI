@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LandingPage from '@/components/LandingPage'
-import Dashboard from '@/components/Dashboard'
+import CRMDashboard from '@/components/dashboard/CRMDashboard'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -14,5 +14,5 @@ export default async function HomePage() {
     return <LandingPage />
   }
 
-  return <Dashboard user={user} />
+  return <CRMDashboard user={user} />
 }

@@ -13,12 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agary - AI-Powered Personal CRM",
-  description: "Transform your network into your greatest asset. Ask questions like 'Who can help me with fundraising?' and get intelligent matches from your contacts powered by AI.",
+  title: "Agary",
+  description: "Agary – AI-powered networking CRM for enriched contacts and smart search.",
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
     apple: '/favicon.svg',
+  },
+  openGraph: {
+    title: "Agary",
+    description: "AI-powered networking CRM for enriched contacts and smart search.",
+    url: "https://agary.app",
+    siteName: "Agary",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agary",
+    description: "AI-powered networking CRM for enriched contacts and smart search.",
   },
 };
 

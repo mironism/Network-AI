@@ -5,13 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 
+interface EnrichmentData {
+  enriched_at?: string
+}
+
 interface Contact {
   id: string
   first_name: string
   last_name: string
   linkedin_url?: string
   other_links?: string
-  enrichment_data?: any
+  enrichment_data?: EnrichmentData
   created_at: string
 }
 
