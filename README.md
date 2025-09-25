@@ -1,6 +1,6 @@
-# NetworkAI - Smart Networking CRM
+# Agary - Smart Networking CRM
 
-NetworkAI is an intelligent networking CRM that automatically enriches your contacts with AI-powered insights and enables smart search across your professional network.
+Agary is an intelligent networking CRM that automatically enriches your contacts with AI-powered insights and enables smart search across your professional network.
 
 ## Features
 
@@ -24,7 +24,7 @@ NetworkAI is an intelligent networking CRM that automatically enriches your cont
 
 ```bash
 git clone <your-repo-url>
-cd network-ai
+cd agary
 npm install
 ```
 

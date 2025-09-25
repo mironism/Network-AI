@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -35,6 +37,7 @@ export default function AuthPage() {
           password,
         })
         if (error) throw error
+        router.push('/')
       }
     } catch (error) {
       alert((error as Error).message)
@@ -47,7 +50,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>NetworkAI</CardTitle>
+          <CardTitle>Agary</CardTitle>
           <CardDescription>
             {isSignUp ? 'Create your account' : 'Sign in to your account'}
           </CardDescription>
