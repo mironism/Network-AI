@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useRouter } from 'next/navigation'
 
 export default function AuthPage() {
   const [email, setEmail] = useState('')
@@ -13,6 +14,14 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
+
+  useEffect(() => {
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) router.replace('/')
+    })()
+  }, [])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,6 +44,7 @@ export default function AuthPage() {
           password,
         })
         if (error) throw error
+        router.replace('/')
       }
     } catch (error) {
       alert((error as Error).message)
