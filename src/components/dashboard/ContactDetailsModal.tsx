@@ -58,6 +58,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
   const [otherLinks, setOtherLinks] = useState(contact.other_links || '')
   const [notes, setNotes] = useState(contact.notes || '')
   const [loading, setLoading] = useState(false)
+  const [enriching, setEnriching] = useState(false)
 
   const supabase = createClient()
 
@@ -84,6 +85,37 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
       alert('Failed to update contact')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEnrichContact = async () => {
+    setEnriching(true)
+    try {
+      const response = await fetch('/api/enrich-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contactId: contact.id,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to enrich contact')
+      }
+
+      const data = await response.json()
+
+      // Refresh the contact data
+      onUpdate()
+
+      alert('Contact enriched successfully!')
+    } catch (error) {
+      console.error('Error enriching contact:', error)
+      alert('Failed to enrich contact. Please try again.')
+    } finally {
+      setEnriching(false)
     }
   }
 
@@ -306,16 +338,33 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
             {contact.enrichment_data ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2 text-purple-600">
-                    <Sparkles className="h-5 w-5" />
-                    <span>AI Enhanced</span>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-purple-600">
+                      <Sparkles className="h-5 w-5" />
+                      <span>AI Enhanced</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEnrichContact}
+                      disabled={enriching}
+                    >
+                      {enriching ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-600">
-                    <p>This contact has been enriched with AI-powered data from various sources.</p>
-                    {/* TODO: Display enrichment data */}
+                <CardContent className="space-y-3">
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <h4 className="font-medium text-purple-900 mb-2">Professional Summary</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {contact.enrichment_data.summary}
+                    </p>
                   </div>
+                  {contact.enrichment_data.enriched_at && (
+                    <div className="text-xs text-gray-500">
+                      Last enriched: {new Date(contact.enrichment_data.enriched_at).toLocaleString()}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -329,11 +378,16 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                 <CardContent>
                   <div className="text-center">
                     <p className="text-sm text-gray-500 mb-3">
-                      Enhance this contact with AI-powered data
+                      Enhance this contact with AI-powered data from Perplexity
                     </p>
-                    <Button size="sm" className="w-full">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={handleEnrichContact}
+                      disabled={enriching}
+                    >
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Enrich Contact
+                      {enriching ? 'Enriching...' : 'Enrich Contact'}
                     </Button>
                   </div>
                 </CardContent>

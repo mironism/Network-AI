@@ -16,7 +16,8 @@ import {
   Calendar,
   Briefcase,
   MapPin,
-  Clock
+  Clock,
+  Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContactDetailsModal from './ContactDetailsModal'
@@ -43,6 +44,7 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [enrichingContacts, setEnrichingContacts] = useState<Set<string>>(new Set())
   const supabase = createClient()
 
   useEffect(() => {
@@ -135,6 +137,39 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
     } catch (error) {
       console.error('Error deleting contact:', error)
       alert('Failed to delete contact')
+    }
+  }
+
+  const enrichContact = async (contactId: string) => {
+    setEnrichingContacts(prev => new Set(prev).add(contactId))
+
+    try {
+      const response = await fetch('/api/enrich-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contactId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to enrich contact')
+      }
+
+      // Refresh contacts to show updated data
+      await fetchContacts()
+
+    } catch (error) {
+      console.error('Error enriching contact:', error)
+      alert('Failed to enrich contact. Please try again.')
+    } finally {
+      setEnrichingContacts(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(contactId)
+        return newSet
+      })
     }
   }
 
@@ -269,6 +304,17 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
                           Open LinkedIn
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          enrichContact(contact.id)
+                        }}
+                        disabled={enrichingContacts.has(contact.id)}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {enrichingContacts.has(contact.id) ? 'Enriching...' :
+                         contact.enrichment_data ? 'Refresh Data' : 'Enrich Contact'}
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation()
