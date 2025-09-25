@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import CRMDashboard from '@/components/dashboard/CRMDashboard'
-import MarketingLanding from '@/components/LandingPage'
+import MarketingLanding from '@/components/landing/LandingPage'
 
 export default async function HomePage() {
   const supabase = await createClient()
