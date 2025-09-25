@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
     }
 
-    const callPerplexity = async (payload: Record<string, any>) => {
-      const execute = (body: Record<string, any>) => fetch('https://api.perplexity.ai/chat/completions', {
+    const callPerplexity = async (payload: Record<string, unknown>) => {
+      const execute = (body: Record<string, unknown>) => fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.Preplexity}`,
