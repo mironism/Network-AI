@@ -73,6 +73,12 @@ interface EnrichmentData {
     description?: string
     source?: string
   }>
+  websites_and_profiles?: Array<{
+    type?: string
+    url?: string
+    title?: string
+    description?: string
+  }>
   additional_info?: {
     publications?: string[]
     certifications?: string[]
