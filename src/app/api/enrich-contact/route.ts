@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+interface IdentityCandidate {
+  name?: string
+  company?: string
+  location?: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -343,7 +349,7 @@ IMPORTANT INSTRUCTIONS:
       return result
     }
 
-    let parsedData: any = tryParse(rawResponse) || attemptRepairParse(rawResponse)
+    let parsedData: Record<string, unknown> = tryParse(rawResponse) || attemptRepairParse(rawResponse)
 
     if (parsedData && typeof parsedData === 'string') {
       parsedData = tryParse(parsedData) || attemptRepairParse(parsedData)
@@ -432,7 +438,7 @@ IMPORTANT INSTRUCTIONS:
     const nameSources: Array<string | undefined> = [
       parsedData.identity?.canonical_name,
       parsedData.person_summary?.full_name,
-      ...identityCandidates.map((candidate: any) => candidate?.name as string | undefined)
+      ...identityCandidates.map((candidate: IdentityCandidate) => candidate?.name as string | undefined)
     ]
 
     const companySources: Array<string | undefined> = [
@@ -440,13 +446,13 @@ IMPORTANT INSTRUCTIONS:
       parsedData.person_summary?.current_position,
       parsedData.identity?.company,
       ...stringArray(parsedData.professional_background?.previous_companies),
-      ...identityCandidates.map((candidate: any) => candidate?.company as string | undefined)
+      ...identityCandidates.map((candidate: IdentityCandidate) => candidate?.company as string | undefined)
     ]
 
     const locationSources: Array<string | undefined> = [
       parsedData.person_summary?.location,
       parsedData.identity?.location,
-      ...(identityCandidates.map((candidate: any) => candidate?.location as string | undefined))
+      ...(identityCandidates.map((candidate: IdentityCandidate) => candidate?.location as string | undefined))
     ]
 
     const nameMatch = matchesName(nameSources)

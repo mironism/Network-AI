@@ -147,7 +147,7 @@ export default function LandingPage() {
                               </h1>
                               <p
                                   className="mx-auto mt-8 max-w-2xl text-balance text-lg leading-relaxed">
-                                  Transform your network into your greatest asset. Ask questions like "Who can help me with fundraising?" and get intelligent matches from your contacts powered by AI.
+                                      Transform your network into your greatest asset. Ask questions like &ldquo;Who can help me with fundraising?&rdquo; and get intelligent matches from your contacts powered by AI.
                               </p>
                           </AnimatedGroup>
 

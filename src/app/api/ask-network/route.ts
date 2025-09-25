@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+interface Contact {
+  id: string
+  name: string
+  email?: string
+  company?: string
+  role?: string
+  bio?: string
+  location?: string
+  similarity?: number
+}
+
+interface Message {
+  role: string
+  content: string
+  contacts?: Contact[]
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -39,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Retrieve top-k contacts via RPC. If no embeddings exist yet for this user, opportunistically backfill a small batch.
-    let contacts: any[] = []
+    let contacts: Contact[] = []
     if (embedding) {
       const { data: matches, error: matchError } = await supabase
         .rpc('match_contacts', {
@@ -51,7 +68,7 @@ export async function POST(request: NextRequest) {
       if (matchError) {
         console.warn('match_contacts error, falling back to keyword search:', matchError)
       } else {
-        contacts = (matches || []).map((m: any) => ({
+        contacts = (matches || []).map((m: Contact) => ({
           id: m.id,
           name: `${m.first_name} ${m.last_name}`.trim(),
           company: m.company || null,
@@ -81,7 +98,7 @@ export async function POST(request: NextRequest) {
                 .limit(50)
 
               if ((toEmbed?.length || 0) > 0 && process.env.OPENAI_API_KEY) {
-                const texts = (toEmbed || []).map((c: any) => [
+                const texts = (toEmbed || []).map((c: Contact) => [
                   c.first_name, c.last_name, c.company,
                   c.notes,
                   c.enrichment_data?.person_summary?.summary,
@@ -101,7 +118,7 @@ export async function POST(request: NextRequest) {
                 })
                 if (embedResp2.ok) {
                   const ej = await embedResp2.json()
-                  const vectors = ej.data?.map((d: any) => d.embedding) || []
+                  const vectors = ej.data?.map((d: { embedding: number[] }) => d.embedding) || []
                   // Upsert embeddings one-by-one (small batch)
                   for (let i = 0; i < Math.min(vectors.length, toEmbed!.length); i++) {
                     const cid = toEmbed![i].id
@@ -121,7 +138,7 @@ export async function POST(request: NextRequest) {
                       match_count: k
                     })
                   if (matches2) {
-                    contacts = matches2.map((m: any) => ({
+                    contacts = matches2.map((m: Contact) => ({
                       id: m.id,
                       name: `${m.first_name} ${m.last_name}`.trim(),
                       company: m.company || null,
@@ -174,7 +191,7 @@ export async function POST(request: NextRequest) {
         .limit(k)
 
       if (!kwErr && kw) {
-        contacts = kw.map((m: any) => ({
+        contacts = kw.map((m: Contact) => ({
           id: m.id,
           name: `${m.first_name} ${m.last_name}`.trim(),
           company: m.company || null,
@@ -185,7 +202,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const contactsForPrompt = contacts.map((c: any) => ({
+    const contactsForPrompt = contacts.map((c: Contact) => ({
       id: c.id,
       name: c.name,
       company: c.company,
@@ -196,7 +213,7 @@ export async function POST(request: NextRequest) {
     }))
 
     // 3) Build a concise RAG prompt
-    const context = contactsForPrompt.map((c: any, i: number) => (
+    const context = contactsForPrompt.map((c: Contact, i: number) => (
       `#${i + 1} ${c.name}` +
       `${c.company ? `, ${c.company}` : ''}` +
       `${c.location ? `, ${c.location}` : ''}` +
@@ -205,15 +222,15 @@ export async function POST(request: NextRequest) {
     )).join('\n\n')
 
     const recentAssistant = Array.isArray(messages)
-      ? [...messages].reverse().find((m: any) => m.role === 'assistant' && Array.isArray(m.contacts) && m.contacts.length)
+      ? [...messages].reverse().find((m: Message) => m.role === 'assistant' && Array.isArray(m.contacts) && m.contacts.length)
       : null
-    const lastSuggestedNames = recentAssistant ? recentAssistant.contacts.map((c: any) => c.name).join(', ') : ''
+    const lastSuggestedNames = recentAssistant ? recentAssistant.contacts.map((c: Contact) => c.name).join(', ') : ''
 
     const system = 'You are Agary, an expert CRM copilot. Maintain conversational coherence using the entire message history. Resolve pronouns and follow-ups naturally. Ground answers ONLY in the provided contacts context provided below. If the answer is explicitly present in the provided fields (e.g., location, company), answer directly and concisely; do not claim lack of info when the field exists. Be direct, and include a short list of suggested people with reasoning.'
 
     // Build compact chat history for the LLM
     const historyMessages = Array.isArray(messages)
-      ? messages.slice(-12).map((m: any) => ({
+      ? messages.slice(-12).map((m: Message) => ({
           role: m.role === 'assistant' ? 'assistant' : 'user',
           content: typeof m.content === 'string' ? m.content : ''
         }))
@@ -222,7 +239,7 @@ export async function POST(request: NextRequest) {
     // Identify a primary candidate from the last assistant suggestions (first item)
     const primaryCandidateName: string | null = recentAssistant?.contacts?.[0]?.name || null
     const primary = primaryCandidateName
-      ? contactsForPrompt.find((c: any) => c.name === primaryCandidateName) || null
+      ? contactsForPrompt.find((c: Contact) => c.name === primaryCandidateName) || null
       : null
 
     const primaryBlock = primary
@@ -250,7 +267,7 @@ export async function POST(request: NextRequest) {
     if (asksLocation && recentAssistant && Array.isArray(recentAssistant.contacts) && recentAssistant.contacts.length >= 1) {
       // Use the first suggested contact from the last assistant reply
       const targetName: string = recentAssistant.contacts[0]?.name
-      const target = contactsForPrompt.find((c: any) => c.name === targetName)
+      const target = contactsForPrompt.find((c: Contact) => c.name === targetName)
       if (target) {
         const loc = target.location || target.enrichment_data?.person_summary?.location
         if (loc) {
@@ -299,7 +316,7 @@ export async function POST(request: NextRequest) {
         lines.push('No matching contacts found. Try refining your query or enrich contacts first.')
       } else {
         lines.push('Top suggested people:')
-        contactsForPrompt.slice(0, 5).forEach((c: any, i: number) => {
+        contactsForPrompt.slice(0, 5).forEach((c: Contact, i: number) => {
           const parts = [c.name]
           if (c.company) parts.push(c.company)
           if (c.location) parts.push(c.location)
