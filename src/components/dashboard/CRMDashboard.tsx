@@ -2,13 +2,10 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Search, Plus, Users, Activity, Settings, LogOut, Filter, MessageSquare } from 'lucide-react'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { LogOut, Filter, MessageSquare, Users, Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContactsGrid from './ContactsGrid'
 import ContactForm from './ContactForm'
@@ -44,7 +41,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">Agary</h1>
+              <h1 className="text-2xl font-bold text-gray-900">NetworkAI</h1>
               <Badge variant="secondary" className="text-xs">
                 Beta
               </Badge>
@@ -106,7 +103,6 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
             <Sheet open={showAddContact} onOpenChange={setShowAddContact}>
               <SheetTrigger asChild>
                 <Button size="sm" className="flex items-center space-x-2">
-                  <Plus className="h-4 w-4" />
                   <span>Add Contact</span>
                 </Button>
               </SheetTrigger>
@@ -145,8 +141,6 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
           <TabsContent value="recent" className="space-y-4">
             <ContactsGrid searchQuery={searchQuery} filter="recent" />
           </TabsContent>
-
-          
 
           <TabsContent value="starred" className="space-y-4">
             <ContactsGrid searchQuery={searchQuery} filter="starred" />

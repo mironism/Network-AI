@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -458,7 +459,7 @@ IMPORTANT INSTRUCTIONS:
     if (contact.company && !companyMatch) mismatchReasons.push(`Company mismatch (expected ${contact.company})`)
     if (contact.location && !locationMatch) mismatchReasons.push(`Location mismatch (expected ${contact.location})`)
 
-    const candidateCount = identityCandidates.filter((candidate) => candidate && Object.keys(candidate).length > 0).length
+    const candidateCount = identityCandidates.filter((candidate: Record<string, unknown>) => candidate && Object.keys(candidate).length > 0).length
     const hasAmbiguity = candidateCount > 1
     if (hasAmbiguity) mismatchReasons.push('Multiple identity candidates detected')
 

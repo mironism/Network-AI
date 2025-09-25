@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
         const embedJson = await embedResp.json()
         embedding = embedJson.data?.[0]?.embedding || null
       }
-    } catch (e) {
+    } catch {
       // Soft-fail to keyword search
       embedding = null
     }
