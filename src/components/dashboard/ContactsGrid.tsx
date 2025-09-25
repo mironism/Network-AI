@@ -22,13 +22,17 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import ContactDetailsModal from './ContactDetailsModal'
 
+interface EnrichmentData {
+  enriched_at?: string
+}
+
 interface Contact {
   id: string
   first_name: string
   last_name: string
   linkedin_url?: string
   other_links?: string
-  enrichment_data?: any
+  enrichment_data?: EnrichmentData
   notes?: string
   voice_notes?: string[]
   created_at: string
@@ -37,7 +41,7 @@ interface Contact {
 
 interface ContactsGridProps {
   searchQuery: string
-  filter: 'all' | 'recent' | 'enriched' | 'starred'
+  filter: 'all' | 'recent' | 'starred'
 }
 
 export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps) {
@@ -75,9 +79,6 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
           const weekAgo = new Date()
           weekAgo.setDate(weekAgo.getDate() - 7)
           query = query.gte('created_at', weekAgo.toISOString())
-          break
-        case 'enriched':
-          query = query.not('enrichment_data', 'is', null)
           break
         case 'starred':
           // For now, show contacts with notes (we'll implement starring later)
@@ -163,7 +164,6 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
 
     } catch (error) {
       console.error('Error enriching contact:', error)
-      alert('Failed to enrich contact. Please try again.')
     } finally {
       setEnrichingContacts(prev => {
         const newSet = new Set(prev)
@@ -189,7 +189,18 @@ export default function ContactsGrid({ searchQuery, filter }: ContactsGridProps)
     const badges = []
 
     if (contact.enrichment_data) {
-      badges.push({ text: 'AI Enhanced', variant: 'default' as const })
+      // Add confidence badge if available
+      if (contact.enrichment_data.confidence_score?.confidence_level) {
+        const confidenceLevel = contact.enrichment_data.confidence_score.confidence_level
+        badges.push({
+          text: `AI ${confidenceLevel.charAt(0).toUpperCase() + confidenceLevel.slice(1)} Confidence`,
+          variant: confidenceLevel === 'high' ? 'default' as const :
+                   confidenceLevel === 'medium' ? 'secondary' as const :
+                   'destructive' as const
+        })
+      } else {
+        badges.push({ text: 'AI Enhanced', variant: 'default' as const })
+      }
     }
 
     if (contact.linkedin_url) {

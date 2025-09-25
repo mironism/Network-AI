@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Search, Plus, Users, UserPlus, Activity, Settings, LogOut, Filter } from 'lucide-react'
+import { Search, Plus, Users, Activity, Settings, LogOut, Filter } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContactsGrid from './ContactsGrid'
 import ContactForm from './ContactForm'
@@ -98,11 +98,13 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
                   <span>Add Contact</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent>
-                <ContactForm
-                  onSuccess={() => setShowAddContact(false)}
-                  onCancel={() => setShowAddContact(false)}
-                />
+              <SheetContent className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto">
+                <div className="h-full py-4">
+                  <ContactForm
+                    onSuccess={() => setShowAddContact(false)}
+                    onCancel={() => setShowAddContact(false)}
+                  />
+                </div>
               </SheetContent>
             </Sheet>
           </div>
@@ -110,7 +112,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
 
         {/* Contact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
             <TabsTrigger value="all" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span>All Contacts</span>
@@ -119,12 +121,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
               <Activity className="h-4 w-4" />
               <span>Recent</span>
             </TabsTrigger>
-            <TabsTrigger value="enriched" className="flex items-center space-x-2">
-              <UserPlus className="h-4 w-4" />
-              <span>AI Enriched</span>
-            </TabsTrigger>
             <TabsTrigger value="starred" className="flex items-center space-x-2">
-              <span>⭐</span>
               <span>Starred</span>
             </TabsTrigger>
           </TabsList>
@@ -137,9 +134,7 @@ export default function CRMDashboard({ user }: CRMDashboardProps) {
             <ContactsGrid searchQuery={searchQuery} filter="recent" />
           </TabsContent>
 
-          <TabsContent value="enriched" className="space-y-4">
-            <ContactsGrid searchQuery={searchQuery} filter="enriched" />
-          </TabsContent>
+          
 
           <TabsContent value="starred" className="space-y-4">
             <ContactsGrid searchQuery={searchQuery} filter="starred" />
