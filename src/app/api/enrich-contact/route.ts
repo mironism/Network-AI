@@ -144,8 +144,19 @@ export async function POST(request: NextRequest) {
       throw new Error(`Perplexity API error: ${response.status} - ${errorText}`)
     }
 
+    // DEBUG: Log enrichment flow decision
+    console.log('=== ENRICHMENT FLOW DEBUG ===')
+    console.log('Contact ID:', contactId)
+    console.log('Contact LinkedIn URL:', contact.linkedin_url)
+    console.log('Selected Candidate:', selectedCandidate ? 'YES' : 'NO')
+    console.log('Skip Candidate Selection:', skipCandidateSelection)
+    console.log('LinkedIn URL detected:', !!contact.linkedin_url)
+    console.log('LinkedIn URL value:', JSON.stringify(contact.linkedin_url))
+
     // Special handling for definitive LinkedIn URL enrichment
     if (contact.linkedin_url && !selectedCandidate) {
+      console.log('🎯 ENTERING DEFINITIVE LINKEDIN ENRICHMENT MODE')
+      console.log('LinkedIn URL confirmed:', contact.linkedin_url)
       const linkedinSlug = normalizeLinkedInUrl(contact.linkedin_url)
 
       const definitiveEnrichmentPrompt = `DEFINITIVE LINKEDIN ENRICHMENT - SINGLE PERSON ONLY
@@ -217,33 +228,44 @@ Return ONLY valid JSON with this structure:
   }
 }`
 
-      const definitiveResponse = await callPerplexity({
-        model: 'sonar-pro',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are enriching a CONFIRMED person using their definitive LinkedIn URL. Focus exclusively on this one person. Do not search for or return information about other people with similar names. Return only valid JSON.'
-          },
-          {
-            role: 'user',
-            content: definitiveEnrichmentPrompt
-          }
-        ],
-        max_tokens: 1800,
-        temperature: 0.0,
-        search_enabled: true,
-        search_mode: 'web',
-        search_domain_filter: ['linkedin.com'],
-        return_citations: false,
-        return_images: false,
-      })
+      let definitiveData: any
+      let definitiveRaw = ''
 
-      const definitiveData = await definitiveResponse.json()
-      const definitiveRaw = definitiveData.choices?.[0]?.message?.content || ''
+      try {
+        console.log('📡 Calling Perplexity for definitive LinkedIn enrichment...')
+        const definitiveResponse = await callPerplexity({
+          model: 'sonar-pro',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are enriching a CONFIRMED person using their definitive LinkedIn URL. Focus exclusively on this one person. Do not search for or return information about other people with similar names. Return only valid JSON.'
+            },
+            {
+              role: 'user',
+              content: definitiveEnrichmentPrompt
+            }
+          ],
+          max_tokens: 1800,
+          temperature: 0.0,
+          search_enabled: true,
+          search_mode: 'web',
+          search_domain_filter: ['linkedin.com'],
+          return_citations: false,
+          return_images: false,
+        })
 
-      console.log('=== DEFINITIVE LINKEDIN ENRICHMENT ===')
-      console.log('LinkedIn URL:', contact.linkedin_url)
-      console.log('Raw response preview:', definitiveRaw.substring(0, 500))
+        definitiveData = await definitiveResponse.json()
+        definitiveRaw = definitiveData.choices?.[0]?.message?.content || ''
+
+        console.log('=== DEFINITIVE LINKEDIN ENRICHMENT SUCCESS ===')
+        console.log('LinkedIn URL:', contact.linkedin_url)
+        console.log('Raw response preview:', definitiveRaw.substring(0, 500))
+      } catch (apiError) {
+        console.error('❌ Definitive LinkedIn enrichment API error:', apiError)
+        // Fall back to manual construction
+        definitiveRaw = ''
+        definitiveData = null
+      }
 
       let definitiveEnrichmentData: any
       try {
@@ -305,25 +327,40 @@ Return ONLY valid JSON with this structure:
       }
 
       // Update contact with definitive enrichment data
-      const { error: updateError } = await supabase
-        .from('contacts')
-        .update({
-          enrichment_data: finalEnrichmentData,
-          updated_at: new Date().toISOString()
+      try {
+        console.log('💾 Updating contact with definitive enrichment data...')
+        const { error: updateError } = await supabase
+          .from('contacts')
+          .update({
+            enrichment_data: finalEnrichmentData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', contactId)
+          .eq('user_id', user.id)
+
+        if (updateError) {
+          console.error('❌ Database update error:', updateError)
+          throw new Error(`Failed to update contact: ${updateError.message}`)
+        }
+
+        console.log('✅ DEFINITIVE LINKEDIN ENRICHMENT COMPLETED SUCCESSFULLY')
+        return NextResponse.json({
+          success: true,
+          message: 'Contact enriched successfully with definitive LinkedIn data',
+          enrichmentData: finalEnrichmentData
         })
-        .eq('id', contactId)
-        .eq('user_id', user.id)
-
-      if (updateError) {
-        throw new Error(`Failed to update contact: ${updateError.message}`)
+      } catch (dbError) {
+        console.error('❌ Critical error in definitive LinkedIn enrichment:', dbError)
+        throw dbError
       }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Contact enriched successfully with definitive LinkedIn data',
-        enrichmentData: finalEnrichmentData
-      })
+    } else {
+      console.log('❌ DEFINITIVE LINKEDIN ENRICHMENT SKIPPED')
+      console.log('Reason: LinkedIn URL missing or selectedCandidate present')
+      console.log('LinkedIn URL:', contact.linkedin_url)
+      console.log('Selected Candidate:', !!selectedCandidate)
     }
+
+    console.log('🔄 CONTINUING TO GENERAL ENRICHMENT PATH')
 
     // Build comprehensive search query for Perplexity with confidence scoring
     let hasLinkedIn = contact.linkedin_url && contact.linkedin_url.trim() !== ''
@@ -541,7 +578,10 @@ IMPORTANT INSTRUCTIONS:
 - Only set linkedin_profile when you are highly confident it belongs to the same person; otherwise leave it null.
 - Focus on finding ACTUAL data rather than saying information is not available`
 
-    // Call Perplexity API
+    // Call Perplexity API for general enrichment
+    console.log('📡 Calling Perplexity for general enrichment...')
+    console.log('Search query preview:', searchQuery.substring(0, 300))
+
     const perplexityResponse = await callPerplexity({
       model: 'sonar-pro',
       messages: [
