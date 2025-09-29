@@ -621,7 +621,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleEnrichContact}
+                        onClick={() => handleEnrichContact()}
                         disabled={enriching}
                         className="flex items-center space-x-2"
                       >
@@ -658,7 +658,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={handleEnrichContact}
+                                onClick={() => handleEnrichContact()}
                                 disabled={enriching}
                                 className="text-orange-600 hover:text-orange-800"
                               >
