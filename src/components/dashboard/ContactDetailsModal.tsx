@@ -34,11 +34,29 @@ import {
   Building,
   MapPin,
   Briefcase,
-  Globe
+  Globe,
+  AlertCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import CandidateSelectionModal from './CandidateSelectionModal'
 
 type ConfidenceLevel = 'low' | 'medium' | 'high' | string
+
+interface Candidate {
+  name: string
+  current_position?: string
+  company?: string
+  location?: string
+  linkedin_profile?: string
+  profile_image_url?: string
+  experience_summary?: string
+  confidence: number
+  confidence_level: 'high' | 'medium' | 'low'
+  match_factors: string[]
+  initials: string
+  source?: string
+  additional_info?: string
+}
 
 interface EnrichmentData {
   summary?: string
@@ -128,6 +146,10 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
   const [notes, setNotes] = useState(contact.notes || '')
   const [loading, setLoading] = useState(false)
   const [enriching, setEnriching] = useState(false)
+  const [showCandidateSelection, setShowCandidateSelection] = useState(false)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [candidateMessage, setCandidateMessage] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -176,8 +198,10 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
     }
   }
 
-  const handleEnrichContact = async () => {
+  const handleEnrichContact = async (selectedCandidate?: Candidate, skipCandidateSelection = false) => {
     setEnriching(true)
+    setError(null)
+
     try {
       const response = await fetch('/api/enrich-contact', {
         method: 'POST',
@@ -186,23 +210,64 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
         },
         body: JSON.stringify({
           contactId: contact.id,
+          selectedCandidate,
+          skipCandidateSelection,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to enrich contact')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Server error: ${response.status}`)
       }
 
       const data = await response.json()
 
-      // Refresh the contact data in modal and parent
+      if (!data.success && data.requiresCandidateSelection) {
+        // Show candidate selection modal
+        setCandidates(data.candidates || [])
+        setCandidateMessage(data.message || 'Multiple potential matches found.')
+        setShowCandidateSelection(true)
+        return
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Enrichment failed')
+      }
+
+      // Successful enrichment - refresh the contact data
       await refreshContact()
       onUpdate()
     } catch (error) {
       console.error('Error enriching contact:', error)
+      setError(error instanceof Error ? error.message : 'Failed to enrich contact. Please try again.')
     } finally {
       setEnriching(false)
     }
+  }
+
+  const handleCandidateSelect = async (candidate: Candidate) => {
+    setShowCandidateSelection(false)
+    setCandidates([])
+    setCandidateMessage('')
+
+    // Start enrichment with selected candidate
+    await handleEnrichContact(candidate, false)
+  }
+
+  const handleCandidateSkip = async () => {
+    setShowCandidateSelection(false)
+    setCandidates([])
+    setCandidateMessage('')
+
+    // Skip candidate selection and do basic enrichment
+    await handleEnrichContact(undefined, true)
+  }
+
+  const handleCandidateCancel = () => {
+    setShowCandidateSelection(false)
+    setCandidates([])
+    setCandidateMessage('')
+    setEnriching(false)
   }
 
   const formatDate = (dateString: string) => {
@@ -959,7 +1024,7 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                       Get detailed professional information, current role, achievements, and background using AI-powered research.
                     </p>
                     <Button
-                      onClick={handleEnrichContact}
+                      onClick={() => handleEnrichContact()}
                       disabled={enriching}
                       size="sm"
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
@@ -967,6 +1032,26 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
                       <Sparkles className="h-4 w-4 mr-2" />
                       {enriching ? 'Enriching Contact...' : 'Enrich with AI'}
                     </Button>
+
+                    {error && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 mr-2 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">Enrichment Error</p>
+                            <p className="text-sm text-red-700 mt-1">{error}</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setError(null)}
+                              className="mt-2 text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1051,6 +1136,18 @@ export default function ContactDetailsModal({ contact, onClose, onUpdate }: Cont
             </div>
           </div>
         )}
+
+        {/* Candidate Selection Modal */}
+        <CandidateSelectionModal
+          candidates={candidates}
+          contactName={`${currentContact.first_name} ${currentContact.last_name}`}
+          isOpen={showCandidateSelection}
+          onSelect={handleCandidateSelect}
+          onSkip={handleCandidateSkip}
+          onCancel={handleCandidateCancel}
+          loading={enriching}
+          message={candidateMessage}
+        />
       </DialogContent>
     </Dialog>
   )

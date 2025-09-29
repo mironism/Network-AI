@@ -2,6 +2,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+const normalizeLinkedInUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url)
+    return parsed.pathname.replace(/\/$/, '').toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -12,7 +21,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { contactId } = await request.json()
+    const { contactId, selectedCandidate: initialSelectedCandidate, skipCandidateSelection } = await request.json()
+    let selectedCandidate = initialSelectedCandidate
 
     if (!contactId) {
       return NextResponse.json({ error: 'Contact ID is required' }, { status: 400 })
@@ -28,6 +38,82 @@ export async function POST(request: NextRequest) {
 
     if (contactError || !contact) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
+    }
+
+    // New candidate selection workflow
+    if (!skipCandidateSelection && !selectedCandidate && !contact.linkedin_url) {
+      // First check if we should discover candidates
+      const candidateDiscoveryResponse = await fetch(`${process.env.NEXTJS_URL || 'http://localhost:3000'}/api/discover-candidates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: contact.first_name,
+          lastName: contact.last_name,
+          company: contact.company,
+          location: contact.location,
+          linkedinUrl: contact.linkedin_url
+        })
+      })
+
+      if (candidateDiscoveryResponse.ok) {
+        const candidateData = await candidateDiscoveryResponse.json()
+
+        if (candidateData.success && candidateData.candidates.length > 1) {
+          // Multiple candidates found - return them for user selection
+          return NextResponse.json({
+            success: false,
+            requiresCandidateSelection: true,
+            candidates: candidateData.candidates,
+            message: 'Multiple potential matches found. Please select the correct person.'
+          })
+        }
+
+        if (candidateData.success && candidateData.candidates.length === 1) {
+          const candidate = candidateData.candidates[0]
+          if (candidate.confidence < 80) {
+            // Low confidence single candidate - still ask user to confirm
+            return NextResponse.json({
+              success: false,
+              requiresCandidateSelection: true,
+              candidates: candidateData.candidates,
+              message: 'Found one potential match with moderate confidence. Please confirm this is the correct person.'
+            })
+          }
+          // High confidence single candidate - use it automatically
+          selectedCandidate = candidate
+        }
+      }
+    }
+
+    // If we have a selected candidate, update contact with confirmed data
+    if (selectedCandidate) {
+      const updates: any = {}
+
+      if (selectedCandidate.linkedin_profile && !contact.linkedin_url) {
+        updates.linkedin_url = selectedCandidate.linkedin_profile
+      }
+
+      if (selectedCandidate.company && !contact.company) {
+        updates.company = selectedCandidate.company
+      }
+
+      if (selectedCandidate.location && !contact.location) {
+        updates.location = selectedCandidate.location
+      }
+
+      // Update contact in database if we have new info
+      if (Object.keys(updates).length > 0) {
+        await supabase
+          .from('contacts')
+          .update(updates)
+          .eq('id', contactId)
+          .eq('user_id', user.id)
+
+        // Update local contact object
+        Object.assign(contact, updates)
+      }
     }
 
     const callPerplexity = async (payload: Record<string, any>) => {
@@ -161,9 +247,15 @@ export async function POST(request: NextRequest) {
 
     const linkedinSlug = hasLinkedIn ? (() => { try { return new URL(contact.linkedin_url).pathname.replace(/\/$/, '') } catch { return '' } })() : ''
 
-    const searchQuery = `${hasLinkedIn ?
-      `Target person: ${contact.first_name} ${contact.last_name}.\nLinkedIn: ${contact.linkedin_url} (slug: "${linkedinSlug}").\n` +
-      `Use this LinkedIn profile as the anchor to confirm identity, then expand with consistent information from other reputable sources. If a source clearly refers to a different person, exclude it.` :
+    // Determine if we have definitive identity confirmation
+    const hasDefinitiveIdentity = hasLinkedIn || selectedCandidate
+    const definitiveLinkedIn = hasLinkedIn ? contact.linkedin_url : selectedCandidate?.linkedin_profile
+
+    const searchQuery = `${hasDefinitiveIdentity ?
+      `DEFINITIVE IDENTITY CONFIRMED: ${contact.first_name} ${contact.last_name}.\n` +
+      `${definitiveLinkedIn ? `LinkedIn: ${definitiveLinkedIn} (slug: "${linkedinSlug || normalizeLinkedInUrl(definitiveLinkedIn)}").\n` : ''}` +
+      `${selectedCandidate ? `User-confirmed candidate: ${selectedCandidate.name} from ${selectedCandidate.company || 'Unknown company'}.\n` : ''}` +
+      `Identity is CONFIRMED - focus on comprehensive enrichment rather than verification. Use the provided identity anchor and expand with detailed professional information.` :
       `Target person: ${contact.first_name} ${contact.last_name}.\nBe careful: common name risk. Confirm identity via multiple corroborating signals.`
     }\n\n` +
     `Also search variations/aliases: ${nameVariants}. Prefer exact matches. Use operators like site:linkedin.com/in, site:crunchbase.com, site:github.com, site:twitter.com.${domainHints}` +
