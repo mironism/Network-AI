@@ -57,52 +57,7 @@ export async function POST(request: NextRequest) {
       linkedinUrl: contact.linkedin_url
     })
 
-    // New candidate selection workflow
-    if (!skipCandidateSelection && !selectedCandidate && !contact.linkedin_url) {
-      // First check if we should discover candidates
-      const candidateDiscoveryResponse = await fetch(`${process.env.NEXTJS_URL || 'http://localhost:3000'}/api/discover-candidates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: contact.first_name,
-          lastName: contact.last_name,
-          company: contact.company,
-          location: contact.location,
-          linkedinUrl: contact.linkedin_url
-        })
-      })
-
-      if (candidateDiscoveryResponse.ok) {
-        const candidateData = await candidateDiscoveryResponse.json()
-
-        if (candidateData.success && candidateData.candidates.length > 1) {
-          // Multiple candidates found - return them for user selection
-          return NextResponse.json({
-            success: false,
-            requiresCandidateSelection: true,
-            candidates: candidateData.candidates,
-            message: 'Multiple potential matches found. Please select the correct person.'
-          })
-        }
-
-        if (candidateData.success && candidateData.candidates.length === 1) {
-          const candidate = candidateData.candidates[0]
-          if (candidate.confidence < 80) {
-            // Low confidence single candidate - still ask user to confirm
-            return NextResponse.json({
-              success: false,
-              requiresCandidateSelection: true,
-              candidates: candidateData.candidates,
-              message: 'Found one potential match with moderate confidence. Please confirm this is the correct person.'
-            })
-          }
-          // High confidence single candidate - use it automatically
-          selectedCandidate = candidate
-        }
-      }
-    }
+    // Skip candidate selection workflow for now - proceed directly to enrichment
 
     // If we have a selected candidate, update contact with confirmed data
     if (selectedCandidate) {
