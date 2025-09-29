@@ -12,23 +12,34 @@ const normalizeLinkedInUrl = (url: string): string => {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 ENRICHMENT ENDPOINT CALLED')
+  console.log('Timestamp:', new Date().toISOString())
+
   try {
     const supabase = await createClient()
+    console.log('✅ Supabase client created')
 
     // Check if user is authenticated
+    console.log('🔐 Checking authentication...')
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.log('❌ Authentication failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    console.log('✅ User authenticated:', user.id)
 
+    console.log('📖 Parsing request body...')
     const { contactId, selectedCandidate: initialSelectedCandidate, skipCandidateSelection } = await request.json()
     let selectedCandidate = initialSelectedCandidate
+    console.log('Request params:', { contactId, hasSelectedCandidate: !!selectedCandidate, skipCandidateSelection })
 
     if (!contactId) {
+      console.log('❌ Missing contact ID')
       return NextResponse.json({ error: 'Contact ID is required' }, { status: 400 })
     }
 
     // Get contact data
+    console.log('📋 Fetching contact data for ID:', contactId)
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('*')
@@ -37,8 +48,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (contactError || !contact) {
+      console.log('❌ Contact not found:', contactError)
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
     }
+    console.log('✅ Contact fetched:', {
+      name: `${contact.first_name} ${contact.last_name}`,
+      hasLinkedIn: !!contact.linkedin_url,
+      linkedinUrl: contact.linkedin_url
+    })
 
     // New candidate selection workflow
     if (!skipCandidateSelection && !selectedCandidate && !contact.linkedin_url) {
