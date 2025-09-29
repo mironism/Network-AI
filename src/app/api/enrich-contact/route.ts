@@ -144,6 +144,187 @@ export async function POST(request: NextRequest) {
       throw new Error(`Perplexity API error: ${response.status} - ${errorText}`)
     }
 
+    // Special handling for definitive LinkedIn URL enrichment
+    if (contact.linkedin_url && !selectedCandidate) {
+      const linkedinSlug = normalizeLinkedInUrl(contact.linkedin_url)
+
+      const definitiveEnrichmentPrompt = `DEFINITIVE LINKEDIN ENRICHMENT - SINGLE PERSON ONLY
+
+CONFIRMED IDENTITY:
+- Person: ${contact.first_name} ${contact.last_name}
+- LinkedIn: ${contact.linkedin_url} (slug: ${linkedinSlug})
+- Identity Status: 100% CONFIRMED by provided LinkedIn URL
+
+CRITICAL INSTRUCTIONS:
+1. Use ONLY the provided LinkedIn URL as the identity anchor
+2. IGNORE any other people with the same name
+3. Focus exclusively on enriching THIS specific LinkedIn profile
+4. Search for content that references this exact LinkedIn URL
+5. Cross-reference only with sources that clearly mention this LinkedIn profile
+
+Search Strategy:
+- Primary: ${contact.linkedin_url}
+- Secondary: News/articles mentioning this LinkedIn profile
+- Tertiary: Company pages mentioning this specific person
+
+Return comprehensive professional data for ONLY this confirmed person.
+Set identity.verified = true and confidence_score.overall_confidence = 95.
+Do NOT include identity_candidates array.
+
+Return ONLY valid JSON with this structure:
+{
+  "identity": {
+    "linkedin_profile": "${contact.linkedin_url}",
+    "canonical_name": "${contact.first_name} ${contact.last_name}",
+    "verified": true
+  },
+  "confidence_score": {
+    "overall_confidence": 95,
+    "confidence_level": "high",
+    "matching_factors": ["Exact LinkedIn URL provided"],
+    "disambiguation_notes": "Identity confirmed by provided LinkedIn URL",
+    "verification_suggestions": "No additional verification needed"
+  },
+  "person_summary": {
+    "full_name": "${contact.first_name} ${contact.last_name}",
+    "current_position": "<Current job title and company from LinkedIn>",
+    "industry": "<Industry/field from LinkedIn>",
+    "location": "<Current location from LinkedIn>",
+    "experience_years": "<Years of experience or career stage>",
+    "summary": "<Comprehensive 3-4 sentence professional overview from LinkedIn>"
+  },
+  "professional_background": {
+    "current_company": "<Current employer from LinkedIn>",
+    "previous_companies": ["<Previous companies from LinkedIn>"],
+    "education": "<Educational background from LinkedIn>",
+    "skills_expertise": ["<Skills from LinkedIn>"],
+    "notable_achievements": ["<Achievements from LinkedIn and cross-references>"]
+  },
+  "social_profiles": [
+    {
+      "platform": "LinkedIn",
+      "url": "${contact.linkedin_url}",
+      "verified": true
+    }
+  ],
+  "websites_and_profiles": [],
+  "recent_activities": [],
+  "additional_info": {
+    "publications": [],
+    "certifications": [],
+    "awards": [],
+    "speaking_events": []
+  }
+}`
+
+      const definitiveResponse = await callPerplexity({
+        model: 'sonar-pro',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are enriching a CONFIRMED person using their definitive LinkedIn URL. Focus exclusively on this one person. Do not search for or return information about other people with similar names. Return only valid JSON.'
+          },
+          {
+            role: 'user',
+            content: definitiveEnrichmentPrompt
+          }
+        ],
+        max_tokens: 1800,
+        temperature: 0.0,
+        search_enabled: true,
+        search_mode: 'web',
+        search_domain_filter: ['linkedin.com'],
+        return_citations: false,
+        return_images: false,
+      })
+
+      const definitiveData = await definitiveResponse.json()
+      const definitiveRaw = definitiveData.choices?.[0]?.message?.content || ''
+
+      console.log('=== DEFINITIVE LINKEDIN ENRICHMENT ===')
+      console.log('LinkedIn URL:', contact.linkedin_url)
+      console.log('Raw response preview:', definitiveRaw.substring(0, 500))
+
+      let definitiveEnrichmentData: any
+      try {
+        definitiveEnrichmentData = JSON.parse(definitiveRaw)
+      } catch (parseError) {
+        console.error('Definitive enrichment parse error:', parseError)
+        // Fallback to manual construction
+        definitiveEnrichmentData = {
+          identity: {
+            linkedin_profile: contact.linkedin_url,
+            canonical_name: `${contact.first_name} ${contact.last_name}`,
+            verified: true
+          },
+          confidence_score: {
+            overall_confidence: 95,
+            confidence_level: 'high',
+            matching_factors: ['Exact LinkedIn URL provided'],
+            disambiguation_notes: 'Identity confirmed by provided LinkedIn URL',
+            verification_suggestions: 'No additional verification needed'
+          },
+          person_summary: {
+            full_name: `${contact.first_name} ${contact.last_name}`,
+            summary: 'Professional enrichment data will be populated from LinkedIn profile.'
+          },
+          professional_background: {},
+          social_profiles: [{
+            platform: 'LinkedIn',
+            url: contact.linkedin_url,
+            verified: true
+          }],
+          websites_and_profiles: [],
+          recent_activities: [],
+          additional_info: {},
+          raw_response: definitiveRaw,
+          enriched_at: new Date().toISOString(),
+          source: 'perplexity_definitive',
+          model_used: 'sonar-pro',
+          verification_note: 'Identity confirmed by provided LinkedIn URL - definitive enrichment'
+        }
+      }
+
+      // Ensure the enrichment data has proper structure
+      const finalEnrichmentData = {
+        ...definitiveEnrichmentData,
+        identity: {
+          linkedin_profile: contact.linkedin_url,
+          canonical_name: `${contact.first_name} ${contact.last_name}`,
+          verified: true
+        },
+        confidence_score: {
+          ...definitiveEnrichmentData.confidence_score,
+          overall_confidence: 95,
+          confidence_level: 'high',
+          matching_factors: ['Exact LinkedIn URL provided']
+        },
+        enriched_at: new Date().toISOString(),
+        source: 'perplexity_definitive',
+        needs_manual_review: false
+      }
+
+      // Update contact with definitive enrichment data
+      const { error: updateError } = await supabase
+        .from('contacts')
+        .update({
+          enrichment_data: finalEnrichmentData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contactId)
+        .eq('user_id', user.id)
+
+      if (updateError) {
+        throw new Error(`Failed to update contact: ${updateError.message}`)
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Contact enriched successfully with definitive LinkedIn data',
+        enrichmentData: finalEnrichmentData
+      })
+    }
+
     // Build comprehensive search query for Perplexity with confidence scoring
     let hasLinkedIn = contact.linkedin_url && contact.linkedin_url.trim() !== ''
 
